@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Data
 @AllArgsConstructor
@@ -19,8 +20,8 @@ import java.time.OffsetDateTime;
 public class Comment {
 
     @Id
-    @AttributeOverride(name = "value", column = @Column(name = "id", columnDefinition = "BIGINT"))
-    private CommentId id;
+    @AttributeOverride(name = "value", column = @Column(name = "id", columnDefinition = "uuid"))
+    private UUID id;
     private String text;
     private String author;
     private OffsetDateTime createdAt;

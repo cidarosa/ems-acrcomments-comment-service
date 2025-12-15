@@ -2,62 +2,56 @@ package com.github.cidarosa.acrcomments.comment.service.api.controller;
 
 import com.github.cidarosa.acrcomments.comment.service.api.model.CommentInputDTO;
 import com.github.cidarosa.acrcomments.comment.service.api.model.CommentOutputDTO;
-import com.github.cidarosa.acrcomments.comment.service.common.IdGenerator;
-import com.github.cidarosa.acrcomments.comment.service.domain.model.Comment;
-import com.github.cidarosa.acrcomments.comment.service.domain.model.CommentId;
+import com.github.cidarosa.acrcomments.comment.service.domain.service.CommentService;
 import com.github.cidarosa.acrcomments.comment.service.domain.repository.CommentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.time.OffsetDateTime;
+import java.net.URI;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/comments")
 @RequiredArgsConstructor
 public class CommentController {
 
+    private final CommentService commentService;
     private final CommentRepository commentRepository;
 
     @GetMapping
-    @ResponseStatus(HttpStatus.OK)
-    public Page<CommentOutputDTO> search(@PageableDefault Pageable pageable){
-        Page<Comment> comments = commentRepository.findAll((pageable));
-        return comments.map(this::convertToModel);
+    public ResponseEntity<Page<CommentOutputDTO>> search(@PageableDefault Pageable pageable) {
+        Page<CommentOutputDTO> comments = commentService.findAllPageable(pageable);
+        return ResponseEntity.ok(comments);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<CommentOutputDTO> getOne(@PathVariable UUID id) {
+        CommentOutputDTO outputDTO = commentService.findById(id);
+
+        return ResponseEntity.ok(outputDTO);
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public CommentOutputDTO create(@RequestBody CommentInputDTO inputDTO){
+    public ResponseEntity<CommentOutputDTO> create(@RequestBody CommentInputDTO inputDTO) {
 
-        Comment comment = Comment.builder()
-                .id(new CommentId(IdGenerator.generateTSID()))
-                .author(inputDTO.getAuthor())
-                .text(inputDTO.getText())
-                .createdAt(OffsetDateTime.now())
-                .build();
+        CommentOutputDTO outputDTO = commentService.saveComment(inputDTO);
 
-        comment = commentRepository.saveAndFlush(comment);
+        URI uri = ServletUriComponentsBuilder
+                .fromCurrentRequestUri()
+                .path("/{id}")
+                .buildAndExpand(outputDTO.getId())
+                .toUri();
+        return ResponseEntity.created(uri).body(outputDTO);
 
-        return convertToModel(comment);
-
-    }
-
-    private CommentOutputDTO convertToModel(Comment comment) {
-
-        return CommentOutputDTO.builder()
-                .id(comment.getId().getValue())
-                .author(comment.getAuthor())
-                .text(comment.getText())
-                .createdAt(comment.getCreatedAt())
-                .build();
     }
 }
